@@ -14,6 +14,8 @@ from bs4 import BeautifulSoup
 import regex
 import io
 import aiohttp
+from freezegun import freeze_time
+from textwrap import wrap
 
 # Definition d'un Saint
 class Saint:
@@ -69,19 +71,25 @@ async def envoi_message_quotidien():
         # Récupération du Saint du jour
         saints_du_jour = recuperer_saints_du_jour()
 
-        # Si le Saint du jour existe bien
+        # Pour chaque Saint du jour ...
         for saint_du_jour in saints_du_jour:
+
+            # Récupération de l'image du Saint
             async with aiohttp.ClientSession() as session:
                 async with session.get(saint_du_jour.url_image, ssl=False) as resp:
                     if resp.status != 200:
                         return await canal.send('Could not download file...')
                     data = io.BytesIO(await resp.read())
                     
-                    if len(saint_du_jour.description) <= 2000:
-                        await canal.send(file=discord.File(data, f"{saint_du_jour.nom}.png"), content=f"{saint_du_jour.description}" )
-                    else:
-                        await canal.send(saint_du_jour.description[:2000])
-                        await canal.send(saint_du_jour.description[2000 - len(saint_du_jour.description):], file=discord.File(data, f"{saint_du_jour.nom}.png"))
+            # Découpage du texte en bloc de 2000 caractères (limite d'envoi de Discord)
+            paragraphes = wrap(saint_du_jour.description, 2000)
+
+            # Pour chacun des blocs de 2000 caractères, les envoyer
+            for i in range(0, len(paragraphes)):
+                await canal.send(paragraphes[i])
+
+            # Envoi de l'image
+            await canal.send(file=discord.File(data, f"{saint_du_jour.nom}.png"))
 
 def recuperer_saints_du_jour() -> list[Saint]:
 

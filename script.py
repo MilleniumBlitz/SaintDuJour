@@ -140,16 +140,11 @@ def recuperer_saints_du_jour() -> list[Saint]:
                 elif element_html.name != "i":
                     description_saint += element_texte
         
-        # Recherche par Regex de l'image commencant par le mois et le jour
-        regex_image_saint = regex.compile(r"img/" + date_jour.strftime('%m') + " " + date_jour.strftime('%d')+ " .+")
-        balises_image = html_parse.find_all(src=regex_image_saint)
-    
-
-        try:
-            url_image = base_url + balises_image[len(saints_du_jour)].attrs['src']
+        image = html_parse.find(alt=nom_saint, name="img")
+        if image:
+            url_image = base_url + image.attrs['src']
             saints_du_jour.append(Saint(nom_saint, description_saint, url_image))
-        except IndexError:
-            logger.warning(f"Image du Saint {nom_saint} non existante")
+        else:
             saints_du_jour.append(Saint(nom_saint, description_saint))
 
     logger.info(f"Récupération des Saints du jour terminé : {len(saints_du_jour)} récupéré(s)")

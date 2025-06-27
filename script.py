@@ -19,7 +19,8 @@ from textwrap import wrap
 
 # Definition d'un Saint
 class Saint:
-  def __init__(self, nom, description, url_image):
+
+  def __init__(self, nom, description, url_image = None):
     self.nom = nom
     self.description = description
     self.url_image = url_image
@@ -73,14 +74,7 @@ async def envoi_message_quotidien():
 
         # Pour chaque Saint du jour ...
         for saint_du_jour in saints_du_jour:
-
-            # Récupération de l'image du Saint
-            async with aiohttp.ClientSession() as session:
-                async with session.get(saint_du_jour.url_image, ssl=False) as resp:
-                    if resp.status != 200:
-                        return await canal.send('Could not download file...')
-                    data = io.BytesIO(await resp.read())
-                    
+                                
             # Découpage du texte en bloc de 2000 caractères (limite d'envoi de Discord)
             paragraphes = wrap(saint_du_jour.description, 2000)
 
@@ -89,7 +83,14 @@ async def envoi_message_quotidien():
                 await canal.send(paragraphes[i])
 
             # Envoi de l'image
-            await canal.send(file=discord.File(data, f"{saint_du_jour.nom}.png"))
+            if saint_du_jour.url_image is not None:
+                # Récupération de l'image du Saint
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(saint_du_jour.url_image, ssl=False) as resp:
+                        if resp.status != 200:
+                            return await canal.send('Could not download file...')
+                        data = io.BytesIO(await resp.read())
+                        await canal.send(file=discord.File(data, f"{saint_du_jour.nom}.png"))
 
 def recuperer_saints_du_jour() -> list[Saint]:
 
@@ -141,11 +142,15 @@ def recuperer_saints_du_jour() -> list[Saint]:
         
         # Recherche par Regex de l'image commencant par le mois et le jour
         regex_image_saint = regex.compile(r"img/" + date_jour.strftime('%m') + " " + date_jour.strftime('%d')+ " .+")
-        balise_image = html_parse.find_all(src=regex_image_saint)
+        balises_image = html_parse.find_all(src=regex_image_saint)
+    
 
-        url_image = base_url + balise_image[len(saints_du_jour)].attrs['src']
-
-        saints_du_jour.append(Saint(nom_saint, description_saint, url_image))
+        try:
+            url_image = base_url + balises_image[len(saints_du_jour)].attrs['src']
+            saints_du_jour.append(Saint(nom_saint, description_saint, url_image))
+        except IndexError:
+            logger.warning(f"Image du Saint {nom_saint} non existante")
+            saints_du_jour.append(Saint(nom_saint, description_saint))
 
     logger.info(f"Récupération des Saints du jour terminé : {len(saints_du_jour)} récupéré(s)")
     return saints_du_jour

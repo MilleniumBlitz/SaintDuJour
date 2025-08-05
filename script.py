@@ -10,6 +10,7 @@ import locale
 import requests
 from bs4 import BeautifulSoup
 from textwrap import wrap
+from unidecode import unidecode
 
 # Definition d'un Saint
 class Saint:
@@ -23,7 +24,7 @@ class Saint:
 load_dotenv()
 
 # Récupération du token du bot
-BOT_TOKEN = os.getenv("WEBHOOK_URL")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 # Configuration du logger
 logger = logging.getLogger(__name__)
@@ -48,16 +49,20 @@ def recuperer_saints_du_jour() -> list[Saint]:
     fin_url = ".html"
 
     # Construction de l'URL permettant de récuperer les Saints du mois
-    url = f"{base_url}saints-{nom_du_mois}{fin_url}"
+    url = f"{base_url}saints-{unidecode(nom_du_mois)}{fin_url}"
 
     # Récupération de la page des Saints du mois
     reponse = requests.get(url, verify=False)
 
+    if not reponse.ok:
+        logger.error(f"Une erreur est survenue lors de la récupération de la page des Saints du jour | {reponse.status_code} {reponse.reason}")
+        return []
+
     # Parsage du contenu de la page sous format HTML
     html_parse = BeautifulSoup(reponse.content, "html.parser")
 
-    numero_jour = date_jour.strftime('%d')
-    if numero_jour == "01":
+    numero_jour = '{dt.day}'.format(dt = date_jour)
+    if numero_jour == "1":
         numero_jour = "1er"
 
     resultats_recherche_balises_saint = html_parse.find_all(string = f"{numero_jour} {nom_du_mois}", name="b")
@@ -108,7 +113,7 @@ for saint in recuperer_saints_du_jour():
     # Pour chacun des blocs de 2000 caractères, les envoyer
     for paragraphe in paragraphes:
         # Création et execution d'un webhook contenant le paragraphe 
-        DiscordWebhook(url="https://discord.com/api/webhooks/1387825554287230976/gCYUimPN_IYCNt9fzgX4PreB1nFsbktPLM1Qe5cGm1NHTRDB6E_0CUyr2zBfr2mkz0dR", content=paragraphe).execute()
+        DiscordWebhook(url=WEBHOOK_URL, content=paragraphe).execute()
 
     # Si le Saint du jour possède une image
     if saint.url_image is not None:
@@ -120,6 +125,6 @@ for saint in recuperer_saints_du_jour():
         if reponse.ok:
 
             # Création et execution d'un webhook contenant l'image
-            webhook = DiscordWebhook(url="https://discord.com/api/webhooks/1387825554287230976/gCYUimPN_IYCNt9fzgX4PreB1nFsbktPLM1Qe5cGm1NHTRDB6E_0CUyr2zBfr2mkz0dR")
+            webhook = DiscordWebhook(url=WEBHOOK_URL)
             webhook.add_file(reponse.content, saint.nom + ".jpg")
             webhook.execute()

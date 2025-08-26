@@ -1,16 +1,15 @@
 from discord_webhook import DiscordWebhook
-from datetime import datetime
+import datetime
 from dotenv import load_dotenv
 import os
 import requests
 import logging
 from bs4 import BeautifulSoup
-import datetime
 import locale
-import requests
-from bs4 import BeautifulSoup
 from textwrap import wrap
 from unidecode import unidecode
+
+BASE_URL = "https://liguesaintamedee.ch/"
 
 # Definition d'un Saint
 class Saint:
@@ -37,6 +36,21 @@ logging.basicConfig(
 # Configuration de la langue
 locale.setlocale(locale.LC_ALL, 'fr_FR.utf8')
 
+def recuperer_page_saints_du_mois(nom_du_mois) -> BeautifulSoup:
+    # Construction de l'URL permettant de récuperer les Saints du mois
+    url = f"{BASE_URL}saints-{unidecode(nom_du_mois)}.htmld"
+
+    # Récupération de la page des Saints du mois
+    reponse = requests.get(url, verify=False)
+
+    if not reponse.ok:
+        raise RuntimeError(f"Erreur HTTP {reponse.status_code} en récupérant {url}")
+
+    return BeautifulSoup(reponse.content, "html.parser")
+
+def recuperer_url_image_saint_du_jour(page_web, nom_saint) -> str:
+    return page_web.find(alt=nom_saint, name="img")
+
 def recuperer_saints_du_jour() -> list[Saint]:
 
     logger.info('Lancement de la récupération des Saints du jour')
@@ -45,21 +59,12 @@ def recuperer_saints_du_jour() -> list[Saint]:
 
     date_jour = datetime.datetime.now()
     nom_du_mois = date_jour.strftime('%B')
-    base_url = "https://liguesaintamedee.ch/"
-    fin_url = ".html"
-
-    # Construction de l'URL permettant de récuperer les Saints du mois
-    url = f"{base_url}saints-{unidecode(nom_du_mois)}{fin_url}"
-
-    # Récupération de la page des Saints du mois
-    reponse = requests.get(url, verify=False)
-
-    if not reponse.ok:
-        logger.error(f"Une erreur est survenue lors de la récupération de la page des Saints du jour | {reponse.status_code} {reponse.reason}")
-        return []
-
-    # Parsage du contenu de la page sous format HTML
-    html_parse = BeautifulSoup(reponse.content, "html.parser")
+    
+    try:
+        html_parse = recuperer_page_saints_du_mois(nom_du_mois)
+    except Exception as e:
+        logger.error(f"Impossible de récupérer la page des saints : {e}")
+        return []  # le script continue, mais vide
 
     numero_jour = '{dt.day}'.format(dt = date_jour)
     if numero_jour == "1":
@@ -92,21 +97,26 @@ def recuperer_saints_du_jour() -> list[Saint]:
         saint_du_jour = Saint(nom_saint, description_saint)
 
         # Recherche de l'image du Saint
-        image = html_parse.find(alt=nom_saint, name="img")
+        image = recuperer_url_image_saint_du_jour(html_parse, nom_saint)
 
         # Si elle existe ...
         if image:
 
             # L'ajouter au sein du jour
-            saint_du_jour.url_image = base_url + image.attrs['src']
+            saint_du_jour.url_image = BASE_URL + image.attrs['src']
 
         saints_du_jour.append(saint_du_jour)
 
     logger.info(f"Récupération des Saints du jour terminé : {len(saints_du_jour)} récupéré(s)")
     return saints_du_jour
 
+saints_du_jour = recuperer_saints_du_jour()
+
+if len(saints_du_jour) == 0:
+    DiscordWebhook(url=WEBHOOK_URL, content="Oups ! 0 Saint trouvé aujourd'hui ! Mais que fais le X solide et crémeux à la fois ?").execute()
+
 # Récupération des Saints du jour
-for saint in recuperer_saints_du_jour():
+for saint in saints_du_jour():
      # Découpage du texte en bloc de 2000 caractères (limite d'envoi de Discord)
     paragraphes = wrap(saint.description, 2000)
 

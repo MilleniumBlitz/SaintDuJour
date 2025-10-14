@@ -38,7 +38,7 @@ locale.setlocale(locale.LC_ALL, 'fr_FR.utf8')
 
 def recuperer_page_saints_du_mois(nom_du_mois) -> BeautifulSoup:
     # Construction de l'URL permettant de récuperer les Saints du mois
-    url = f"{BASE_URL}saints-{unidecode(nom_du_mois)}.htmld"
+    url = f"{BASE_URL}saints-{unidecode(nom_du_mois)}.html"
 
     # Récupération de la page des Saints du mois
     reponse = requests.get(url, verify=False)
@@ -116,7 +116,7 @@ if len(saints_du_jour) == 0:
     DiscordWebhook(url=WEBHOOK_URL, content="Oups ! 0 Saint trouvé aujourd'hui ! Mais que fais le X solide et crémeux à la fois ?").execute()
 
 # Récupération des Saints du jour
-for saint in saints_du_jour():
+for saint in saints_du_jour:
      # Découpage du texte en bloc de 2000 caractères (limite d'envoi de Discord)
     paragraphes = wrap(saint.description, 2000)
 

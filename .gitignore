@@ -1,2 +1,6 @@
-.env
+# Environnement virtuel
+venv/
+.env/
+
 *.log
+.env

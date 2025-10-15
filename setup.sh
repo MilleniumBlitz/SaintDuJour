@@ -7,7 +7,7 @@ if [ ! -d "venv" ]; then
 fi
 
 echo "🚀 Activation de l'environnement..."
-source venv/Scripts/activate
+source venv/bin/activate
 
 echo "📦 Installation des dépendances..."
 pip install -r requirements.txt

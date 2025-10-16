@@ -5,9 +5,9 @@ import os
 import requests
 import logging
 from bs4 import BeautifulSoup
-import locale
 from textwrap import wrap
 from unidecode import unidecode
+from babel.dates import format_date
 
 BASE_URL = "https://liguesaintamedee.ch/"
 
@@ -33,9 +33,6 @@ logging.basicConfig(
     filename="saint_du_jour.log"
 )
 
-# Configuration de la langue
-locale.setlocale(locale.LC_ALL, 'fr_FR.utf8')
-
 def recuperer_page_saints_du_mois(nom_du_mois) -> BeautifulSoup:
     # Construction de l'URL permettant de récuperer les Saints du mois
     url = f"{BASE_URL}saints-{unidecode(nom_du_mois)}.html"
@@ -58,7 +55,7 @@ def recuperer_saints_du_jour() -> list[Saint]:
     saints_du_jour = []
 
     date_jour = datetime.datetime.now()
-    nom_du_mois = date_jour.strftime('%B')
+    nom_du_mois = format_date(date_jour, format="MMMM", locale="fr_FR")
     
     try:
         html_parse = recuperer_page_saints_du_mois(nom_du_mois)

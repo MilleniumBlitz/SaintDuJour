@@ -81,14 +81,14 @@ def envoyer_saint_du_jour_telegram(saints_du_jour: list[Saint]):
 
     for saint in saints_du_jour:
 
-        if saint.url_image is not None:
-            payload_photo = {"chat_id": TELEGRAM_CHAT_ID, "photo": saint.url_image}
+        if saint['image'] is not None:
+            payload_photo = {"chat_id": TELEGRAM_CHAT_ID, "photo": saint['image']}
             requests.post(url_photo, json=payload_photo)
         
-        payload_text = {"chat_id": TELEGRAM_CHAT_ID, "text": saint.description}
+        payload_text = {"chat_id": TELEGRAM_CHAT_ID, "text": saint['description']}
         requests.post(url_message, json=payload_text)
 
 saints_du_jour = recuperer_saints_du_jour()
 
 envoyer_saint_du_jour_discord(saints_du_jour)
-#envoyer_saint_du_jour_telegram(saints_du_jour)
+envoyer_saint_du_jour_telegram(saints_du_jour)

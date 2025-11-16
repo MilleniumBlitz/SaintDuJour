@@ -36,6 +36,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
     filename="saint_du_jour.log"
 )
+logging.getLogger("requests").setLevel(logging.ERROR)
 
 def recuperer_saints_du_jour() -> list[Saint]:
 
@@ -83,10 +84,25 @@ def envoyer_saint_du_jour_telegram(saints_du_jour: list[Saint]):
 
         if saint['image'] is not None:
             payload_photo = {"chat_id": TELEGRAM_CHAT_ID, "photo": saint['image']}
-            requests.post(url_photo, json=payload_photo)
+            try:
+                reponse_requete_photo = requests.post(url_photo, json=payload_photo)
+                reponse_requete_photo.raise_for_status()
+            except requests.RequestException as e:
+                logger.error("Une erreur est survenue lors de l'envoi de la photo vers Telegram")
+                logger.error(e.response.content)  
         
-        payload_text = {"chat_id": TELEGRAM_CHAT_ID, "text": saint['description']}
-        requests.post(url_message, json=payload_text)
+        # Découpage du texte en bloc de 4096 caractères (limite d'envoi de Telegram)
+        paragraphes = wrap(saint['description'], 4096)
+
+        # Pour chacun des blocs de 4096 caractères, les envoyer
+        for paragraphe in paragraphes:
+            payload_text = {"chat_id": TELEGRAM_CHAT_ID, "text": paragraphe}
+            try:
+                reponse_requete_text = requests.post(url_message, json=payload_text)
+                reponse_requete_text.raise_for_status()
+            except requests.RequestException as e:
+                logger.error("Une erreur est survenue lors de l'envoi du texte vers Telegram")
+                logger.error(e.response.content)  
 
 saints_du_jour = recuperer_saints_du_jour()
 
